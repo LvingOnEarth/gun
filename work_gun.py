@@ -32,8 +32,8 @@ class Ball:
         self.x = x
         self.y = y
         self.r = 10
-        self.vx = 0
-        self.vy = 0
+        self.vx = vx
+        self.vy = vy
         self.color = choice(['blue', 'green', 'red', 'brown'])
         self.id = canvas.create_oval(
                 self.x - self.r,
@@ -63,6 +63,7 @@ class Ball:
         # FIXME
         self.x += self.vx
         self.y -= self.vy
+        self.set_coords()
 
     def hittest(self, obj):
         """Функция проверяет сталкивалкивается ли данный обьект с целью, описываемой в обьекте obj.
@@ -153,17 +154,17 @@ class Target:
 def cycle():
     target.live = 1
     while target.live or balls:
-        for b in balls:
-            b.move()
-            if b.hittest(target) and target.live:
+        for ball in balls:
+            ball.move()
+            if ball.hittest(target) and target.live:
                 target.live = 0
                 target.hit()
                 canvas.bind('<Button-1>', '')
                 canvas.bind('<ButtonRelease-1>', '')
                 canvas.itemconfig(screen1, text='Вы уничтожили цель за ' + str(bullet) + ' выстрелов')
         canvas.update()
-        time.sleep(0.03)
         gun.targetting()
+        time.sleep(0.03)
         gun.power_up()
     canvas.itemconfig(screen1, text='')
     canvas.delete(gun)
