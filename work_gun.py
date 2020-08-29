@@ -13,6 +13,7 @@ def main():
     root.geometry(str(WIDTH) + 'x' + str(HEIGHT + 100))
     canvas = tk.Canvas(root, bg='white')
     canvas.pack(fill=tk.BOTH, expand=1)
+    canvas.create_line(0, HEIGHT, WIDTH, HEIGHT, fill='red')
 
     target = Target()
     screen1 = canvas.create_text(400, 300, text='', font='28')
@@ -34,6 +35,10 @@ class Ball:
         self.r = 10
         self.vx = vx
         self.vy = vy
+        self.vy_start = vy
+        self.gravitation = .5
+        self.x_resistance = .1
+        self.count = 2
         self.color = choice(['blue', 'green', 'red', 'brown'])
         self.id = canvas.create_oval(
                 self.x - self.r,
@@ -60,9 +65,31 @@ class Ball:
         self.x и self.y с учетом скоростей self.vx и self.vy, силы гравитации, действующей на мяч,
         и стен по краям окна (размер окна 800х600).
         """
-        # FIXME
         self.x += self.vx
-        self.y -= self.vy
+
+        # algorithm of ball's gravitation (axis y)
+        if ((self.y + self.r) + math.fabs(self.vy) > HEIGHT) and ((self.y + self.r) != HEIGHT):
+            self.vy_start /= 2
+            self.vy = self.vy_start
+            self.y += (HEIGHT - (self.y + self.r))
+        elif ((self.y + self.r) == HEIGHT) and (self.vy_start < 1):
+            self.vy = 0
+            self.gravitation = 0
+        else:
+            self.vy -= self.gravitation
+            self.y -= self.vy
+
+        # algorithm of ball's resistance by wind (axis x)
+        if self.vx > 0:
+            self.vx -= self.x_resistance
+        elif self.vx < 0:
+            self.vx += self.x_resistance
+        if math.fabs(self.vx) <= .2:
+            self.vx = 0
+            self.x_resistance = 0
+        if ((self.x + self.r) >= WIDTH) or ((self.x - self.r) <= 0):
+            self.vx *= (-1)
+
         self.set_coords()
 
     def hittest(self, obj):
@@ -73,8 +100,11 @@ class Ball:
         Returns:
             Возвращает True в случае столкновения мяча и цели. В противном случае возвращает False.
         """
-        # FIXME
-        return False
+        hypo = ((self.x - obj.x) ** 2 + (self.y - obj.y) ** 2) ** .5
+        if hypo <= obj.r:
+            return True
+        else:
+            return False
 
 
 class Gun:
@@ -132,7 +162,7 @@ class Gun:
 class Target:
     def __init__(self):
         x = self.x = rnd(600, 780)
-        y = self.y = rnd(300, 550)
+        y = self.y = rnd(200, 450)
         r = self.r = rnd(2, 50)
         self.color = 'red'
         self.points = 0
@@ -152,7 +182,6 @@ class Target:
 
 
 def cycle():
-    target.live = 1
     while target.live or balls:
         for ball in balls:
             ball.move()
