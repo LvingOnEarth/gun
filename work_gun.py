@@ -6,8 +6,11 @@ import time
 WIDTH = 800
 HEIGHT = 500
 
+class Game:
+    pass
+
 def main():
-    global root, canvas, target, screen1, gun, bullet, balls
+    global root, canvas, target, screen, gun, bullet, balls, targets
     root = tk.Tk()
     # fr = tk.Frame(root)
     root.geometry(str(WIDTH) + 'x' + str(HEIGHT + 100))
@@ -15,8 +18,9 @@ def main():
     canvas.pack(fill=tk.BOTH, expand=1)
     canvas.create_line(0, HEIGHT, WIDTH, HEIGHT, fill='red')
 
-    target = Target()
-    screen1 = canvas.create_text(400, 300, text='', font='28')
+    numb_of_targets = 3
+    targets = [Target() for i in range(numb_of_targets)]
+    screen = canvas.create_text(400, 300, text='', font='28')
     gun = Gun()
     bullet = 0
     balls = []
@@ -38,7 +42,7 @@ class Ball:
         self.vy_start = vy
         self.gravitation = .5
         self.x_resistance = .1
-        self.count = 2
+        self.state = True
         self.color = choice(['blue', 'green', 'red', 'brown'])
         self.id = canvas.create_oval(
                 self.x - self.r,
@@ -47,7 +51,6 @@ class Ball:
                 self.y + self.r,
                 fill=self.color
         )
-        self.live = 30
 
     def set_coords(self):
         canvas.coords(
@@ -66,13 +69,14 @@ class Ball:
         и стен по краям окна (размер окна 800х600).
         """
         self.x += self.vx
+        print(self.vy, self.gravitation)
 
         # algorithm of ball's gravitation (axis y)
         if ((self.y + self.r) + math.fabs(self.vy) > HEIGHT) and ((self.y + self.r) != HEIGHT):
             self.vy_start /= 2
             self.vy = self.vy_start
             self.y += (HEIGHT - (self.y + self.r))
-        elif ((self.y + self.r) == HEIGHT) and (self.vy_start < 1):
+        if ((self.y + self.r) == HEIGHT) and (self.vy < .5):
             self.vy = 0
             self.gravitation = 0
         else:
@@ -101,7 +105,7 @@ class Ball:
             Возвращает True в случае столкновения мяча и цели. В противном случае возвращает False.
         """
         hypo = ((self.x - obj.x) ** 2 + (self.y - obj.y) ** 2) ** .5
-        if hypo <= obj.r:
+        if hypo <= (self.r + obj.r):
             return True
         else:
             return False
@@ -111,15 +115,17 @@ class Gun:
     def __init__(self):
         x_1 = self.x_1 = 20
         y_1 = self.y_1 = 450
-        self.f2_power = 10
-        self.f2_on = 0
+        self.x_2 = 0
+        self.y_2 = 0
+        self.power = 10
+        self.fire_on = 0
         self.angle = 1
         self.id = canvas.create_line(x_1, y_1, 50, 420, width=7)
 
-    def fire2_start(self, event):
-        self.f2_on = 1
+    def fire_start(self, event):
+        self.fire_on = 1
 
-    def fire2_end(self, event):
+    def fire_end(self, event):
         """Выстрел мячом.
 
         Происходит при отпускании кнопки мыши.
@@ -128,32 +134,32 @@ class Gun:
         global balls, bullet
         bullet += 1
         self.angle = math.atan((event.y - self.y_1) / (event.x - self.x_1))
-        self.x_2 = self.x_1 + max(self.f2_power, self.x_1) * math.cos(self.angle)
-        self.y_2 = self.y_1 + max(self.f2_power, self.x_1) * math.sin(self.angle)
-        new_ball_vx = self.f2_power * math.cos(self.angle)
-        new_ball_vy = - self.f2_power * math.sin(self.angle)
+        self.x_2 = self.x_1 + max(self.power, self.x_1) * math.cos(self.angle)
+        self.y_2 = self.y_1 + max(self.power, self.x_1) * math.sin(self.angle)
+        new_ball_vx = self.power * math.cos(self.angle)
+        new_ball_vy = - self.power * math.sin(self.angle)
         new_ball = Ball(self.x_2, self.y_2, new_ball_vx, new_ball_vy)
         new_ball.r += 5
         balls += [new_ball]
-        self.f2_on = 0
-        self.f2_power = 10
+        self.fire_on = 0
+        self.power = 10
 
     def targetting(self, event=0):
         """Прицеливание. Зависит от положения мыши."""
         if event:
             self.angle = math.atan((event.y - self.y_1) / (event.x - self.x_1))
-        if self.f2_on:
+        if self.fire_on:
             canvas.itemconfig(self.id, fill='orange')
         else:
             canvas.itemconfig(self.id, fill='black')
         canvas.coords(self.id, self.x_1, self.y_1,
-                      self.x_1 + max(self.f2_power, self.x_1) * math.cos(self.angle),
-                      self.y_1 + max(self.f2_power, self.x_1) * math.sin(self.angle))
+                      self.x_1 + max(self.power, self.x_1) * math.cos(self.angle),
+                      self.y_1 + max(self.power, self.x_1) * math.sin(self.angle))
 
     def power_up(self):
-        if self.f2_on:
-            if self.f2_power < 100:
-                self.f2_power += 1
+        if self.fire_on:
+            if self.power < 100:
+                self.power += 1
             canvas.itemconfig(self.id, fill='orange')
         else:
             canvas.itemconfig(self.id, fill='black')
@@ -165,44 +171,45 @@ class Target:
         y = self.y = rnd(200, 450)
         r = self.r = rnd(2, 50)
         self.color = 'red'
-        self.points = 0
+        self.points = 0 # move to Class Game
         self.live = 1
         self.id = canvas.create_oval(x - r, y - r, x + r, y + r, fill=self.color)
-        self.id_points = canvas.create_text(30, 30, text = self.points, font = '28')
+        self.id_points = canvas.create_text(30, 30, text = self.points, font = '28') # move to Class Game
         # canvas.coords(self.id, x - r, y - r, x + r, y + r)
         # canvas.itemconfig(self.id, fill=color)
 
     def hit(self, points=1):
         """Попадание шарика в цель."""
-        canvas.coords(self.id, -10, -10, -10, -10)
-        self.points += points
-        canvas.itemconfig(self.id_points, text=self.points)
-
-
+        canvas.coords(self.id, -10, -10, -10, -10) # remove self.id ???
+        self.points += points # move to Class Game
+        canvas.itemconfig(self.id_points, text=self.points) # move to Class Game
 
 
 def cycle():
-    while target.live or balls:
-        for ball in balls:
+    for ball in balls:
+        if not ball.state:
+            balls.remove(ball)
+            continue
+        if (ball.gravitation != 0) or (ball.x_resistance != 0):
             ball.move()
+        for target in targets:
             if ball.hittest(target) and target.live:
                 target.live = 0
                 target.hit()
-                canvas.bind('<Button-1>', '')
-                canvas.bind('<ButtonRelease-1>', '')
-                canvas.itemconfig(screen1, text='Вы уничтожили цель за ' + str(bullet) + ' выстрелов')
-        canvas.update()
-        gun.targetting()
-        time.sleep(0.03)
-        gun.power_up()
-    canvas.itemconfig(screen1, text='')
-    canvas.delete(gun)
-    root.after(50, cycle)
-
+                # canvas.bind('<Button-1>', '')
+                # canvas.bind('<ButtonRelease-1>', '')
+                canvas.itemconfig(screen, text='Вы уничтожили цель за ' + str(bullet) + ' выстрелов')
+    # canvas.update()
+    gun.targetting()
+    # time.sleep(0.03)
+    gun.power_up()
+    canvas.itemconfig(screen, text='')
+    # canvas.delete(gun)
+    root.after(30, cycle)
 
 def new_game(event=''):
-    canvas.bind('<Button-1>', gun.fire2_start)
-    canvas.bind('<ButtonRelease-1>', gun.fire2_end)
+    canvas.bind('<Button-1>', gun.fire_start)
+    canvas.bind('<ButtonRelease-1>', gun.fire_end)
     canvas.bind('<Motion>', gun.targetting)
 
 
